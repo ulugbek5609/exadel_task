@@ -2,7 +2,7 @@ using Exadel_task.Models;
 using Exadel_task.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Exadel_task.Controllers
+namespace BookManagementAPI.Controllers
 {
     [ApiController]
     [Route("api/books")]
@@ -15,53 +15,60 @@ namespace Exadel_task.Controllers
             _bookService = bookService;
         }
 
-        // GET: api/books
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+        //  Get book titles with views count, sorted by popularity
+        [HttpGet("titles")]
+        public async Task<IActionResult> GetTitlesSortedByPopularity()
         {
-            var books = await _bookService.GetAllAsync();
+            var books = await _bookService.GetTitlesSortedByPopularityAsync();
             return Ok(books);
         }
 
-        // GET: api/books/{id}
+        //  Get full details of a book by ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(string id)
         {
             var book = await _bookService.GetByIdAsync(id);
-            return book == null ? NotFound() : Ok(book);
+            return book == null ? NotFound("Book not found.") : Ok(book);
         }
 
-        // POST: api/books
+        //  Add a single book
         [HttpPost]
         public async Task<IActionResult> Create(Book book)
         {
-            await _bookService.CreateAsync(book);
-            return CreatedAtAction(nameof(GetById), new { id = book.Id }, book);
+            var (success, message) = await _bookService.CreateAsync(book);
+            return success ? CreatedAtAction(nameof(GetById), new { id = book.Id }, book) : BadRequest(new { Error = message });
         }
 
-        // PUT: api/books/{id}
+        //  Add multiple books
+        [HttpPost("bulk")]
+        public async Task<IActionResult> BulkCreate(List<Book> books)
+        {
+            var (addedBooks, errors) = await _bookService.BulkCreateAsync(books);
+            return Ok(new { AddedBooks = addedBooks, Errors = errors });
+        }
+
+        //  Update an existing book
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, Book updatedBook)
         {
-            var existingBook = await _bookService.GetByIdAsync(id);
-            if (existingBook == null)
-                return NotFound();
-
-            updatedBook.Id = id; // Ensure the correct ID is used
-            await _bookService.UpdateAsync(id, updatedBook);
-            return NoContent();
+            var success = await _bookService.UpdateAsync(id, updatedBook);
+            return success ? NoContent() : NotFound("Book not found or validation failed.");
         }
 
-        // DELETE: api/books/{id}
+        //  Soft delete a single book
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> SoftDelete(string id)
         {
-            var book = await _bookService.GetByIdAsync(id);
-            if (book == null)
-                return NotFound();
+            var success = await _bookService.SoftDeleteAsync(id);
+            return success ? NoContent() : NotFound("Book not found.");
+        }
 
-            await _bookService.DeleteAsync(id);
-            return NoContent();
+        //  Soft delete multiple books
+        [HttpDelete("bulk")]
+        public async Task<IActionResult> BulkSoftDelete(List<string> ids)
+        {
+            var deletedCount = await _bookService.BulkSoftDeleteAsync(ids);
+            return Ok(new { DeletedCount = deletedCount });
         }
     }
 }
