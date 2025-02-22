@@ -1,0 +1,6 @@
+@Exadel_task_HostAddress = http://localhost:5222
+
+GET {{Exadel_task_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
